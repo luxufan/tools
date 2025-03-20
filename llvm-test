@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import subprocess
+
+def run_command(command, cwd=None):
+    print(f"Running: {' '.join(command)}")
+    result = subprocess.run(command, cwd=cwd, check=True)
+    return result
+
+def main():
+    parser = argparse.ArgumentParser(description="Build LLVM Test Suite and SPEC2006")
+    parser.add_argument("--build-dir", type=str, required=True, help="Build directory")
+    parser.add_argument("--llvm-build-dir", type=str, default=os.path.expanduser("~/llvm/build-release"), help="LLVM build directory")
+    parser.add_argument("--test-suite-dir", type=str, default=os.path.expanduser("~/llvm-test-suite"), help="LLVM test suite directory")
+    parser.add_argument("--spec2006-dir", type=str, default=os.path.expanduser("~/spec2006"), help="SPEC2006 directory")
+    parser.add_argument("--cmake-config", type=str, default="ReleaseLTO.cmake", help="Additional CMake configuration options")
+    args = parser.parse_args()
+
+    # Clone llvm-test-suite if not exists
+    if not os.path.isdir(args.test_suite_dir):
+        run_command(["git", "clone", "https://github.com/llvm/llvm-test-suite.git", args.test_suite_dir])
+
+    # Create build directory
+    os.makedirs(args.build_dir, exist_ok=True)
+
+    # Run CMake configuration for LLVM test suite
+    cmake_cmd = [
+        "cmake", "-G", "Ninja",
+        f"-DCMAKE_C_COMPILER={args.llvm_build_dir}/bin/clang",
+        f"-DCMAKE_CXX_COMPILER={args.llvm_build_dir}/bin/clang++",
+        f"-DTEST_SUITE_SPEC2006_ROOT={args.spec2006_dir}",
+        "-DTEST_SUITE_SUBDIRS=External",
+        "-DTEST_SUITE_COLLECT_STATS=ON",
+        "-DTEST_SUITE_USE_PERF=ON",
+        "-DTEST_SUITE_EXTRA_LIT_MODULES=perf",
+        "-C", f"{args.test_suite_dir}/cmake/caches/{args.cmake_config}",
+        f"{args.test_suite_dir}"
+    ]
+    
+    run_command(cmake_cmd, cwd=args.build_dir)
+
+    # Clean the built product
+    run_command(["ninja", "clean"], cwd=args.build_dir)
+
+    # Build LLVM test suite with Ninja
+    run_command(["ninja"], cwd=args.build_dir)
+
+    # Run lit
+    run_command([f"{args.llvm_build_dir}/bin/llvm-lit", "-v", "-j", "56", "-o", "results.json", "."], cwd=args.build_dir)
+
+    print("LLVM test suite build and test completed.")
+
+if __name__ == "__main__":
+    main()
+

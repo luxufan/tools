@@ -48,7 +48,7 @@ def configure_build(args, source_dir: Path, build_dir: Path):
         f'-DCMAKE_BUILD_TYPE={args.build_type}',
         f'-DLLVM_ENABLE_PROJECTS={args.components}',
         f'-DLLVM_TARGETS_TO_BUILD={args.targets}',
-        f'-DLLVM_ENABLE_STATS={"ON" if args.enable_stats else "OFF"}',
+        f'-DLLVM_FORCE_ENABLE_STATS={"ON" if args.enable_stats else "OFF"}',
         f'-DCMAKE_EXPORT_COMPILE_COMMANDS={"ON" if args.export_compile_commands else "OFF"}',
     ]
 
